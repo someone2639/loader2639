@@ -75,7 +75,7 @@ $(CP_LD_SCRIPT): $(LD_SCRIPT)
 	cpp -P -Wno-trigraphs -DBUILD_DIR=$(BUILD_DIR) -o $@ $<
 
 $(GAME): $(OBJECTS) $(CP_LD_SCRIPT)
-	$(LD) -L. $(LDFLAGS) -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF)
+	$(LD) -L. -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) $(LDFLAGS)
 	$(OBJCOPY) --pad-to=0x100000 --gap-fill=0xFF $(ELF) $(GAME) -O binary
 	makemask $(GAME)
 

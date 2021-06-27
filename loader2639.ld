@@ -36,23 +36,29 @@ SECTIONS
       BUILD_DIR/src/main.o(.text*);
 
 
-      /usr/lib/n64/libultra_rom.a:*.o(.text*);
+      */libultra_rom.a:*.o(.text*);
+      */libgcc.a:*.o(.text*);
       /usr/lib/n64/PR/rspboot.o(.text);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text);
 
-      /usr/lib/n64/libultra_rom.a:*.o(.data*);
+      */libultra_rom.a:*.o(.data*);
+      */libgcc.a:*.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
 
-      /usr/lib/n64/libultra_rom.a:*.o(.rodata*);
+      */libultra_rom.a:*.o(.rodata*);
+      */libgcc.a:*.o(.rodata*);
    }
    END_SEG(code)
    BEGIN_NOLOAD(code)
    {
       BUILD_DIR/src/main.o(.bss);
-      /usr/lib/n64/libultra_rom.a:*.o(COMMON);
-      /usr/lib/n64/libultra_rom.a:*.o(.scommon*);
-      /usr/lib/n64/libultra_rom.a:*.o(.bss*);
+      */libultra_rom.a:*.o(COMMON);
+      */libultra_rom.a:*.o(.scommon*);
+      */libultra_rom.a:*.o(.bss*);
+      */libgcc.a:*.o(COMMON);
+      */libgcc.a:*.o(.scommon*);
+      */libgcc.a:*.o(.text*);
    }
    END_NOLOAD(code)
    
