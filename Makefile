@@ -12,7 +12,6 @@
 ROMNAME = loader2639
 
 BUILD_DIR = build
-_ != mkdir -p $(BUILD_DIR) $(BUILD_DIR)/asm $(BUILD_DIR)/src
 
 include /usr/include/n64/make/PRdefs
 
@@ -35,7 +34,10 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 
 
 ASM_DIRS = asm
-SRC_DIRS = src
+SRC_DIRS = src src/buffers
+ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS))
+_ != mkdir -p $(BUILD_DIR) $(ALL_BUILD_DIRS)
+
 C_FILES = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES = $(foreach dir,$(ASM_DIRS),$(wildcard $(dir)/*.s))
 

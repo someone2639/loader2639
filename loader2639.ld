@@ -41,11 +41,13 @@ SECTIONS
       /usr/lib/n64/PR/rspboot.o(.text);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text);
 
+      BUILD_DIR/src/main.o(.data*);
       */libultra_rom.a:*.o(.data*);
       */libgcc.a:*.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
 
+      BUILD_DIR/src/main.o(.rodata*);
       */libultra_rom.a:*.o(.rodata*);
       */libgcc.a:*.o(.rodata*);
    }
@@ -53,6 +55,7 @@ SECTIONS
    BEGIN_NOLOAD(code)
    {
       BUILD_DIR/src/main.o(.bss);
+      BUILD_DIR/src/buffers/framebuffer.o(.bss);
       */libultra_rom.a:*.o(COMMON);
       */libultra_rom.a:*.o(.scommon*);
       */libultra_rom.a:*.o(.bss*);
