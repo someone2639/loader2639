@@ -80,11 +80,13 @@ void main(void) {
         gDPSetColorImage(gdl_head++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320,
                      gFrameBuffers[draw_frame]);
 
-        gFrameBuffers[draw_frame][0][0] = 0xFFFF;
-        gFrameBuffers[draw_frame][1][1] = 0xFFFF;
-        gFrameBuffers[draw_frame][2][2] = 0xFFFF;
-        gFrameBuffers[draw_frame][3][3] = 0xFFFF;
-
+        gDPPipeSync(gdl_head++);
+        gDPSetRenderMode(gdl_head++, G_RM_NOOP, G_RM_NOOP2);
+        gDPSetCycleType(gdl_head++,G_CYC_FILL);
+        gDPSetFillColor(gdl_head++, 0xFF5D<<16  | 0xFF5D);
+        gDPFillRectangle(gdl_head++, 0, 0, 320, 240);
+        gDPPipeSync(gdl_head++);
+        
         gDPFullSync(gdl_head ++);
         gSPEndDisplayList(gdl_head ++);
 
@@ -94,7 +96,6 @@ void main(void) {
         osWritebackDCache(dl_buffer, ((u32)gdl_head)-((u32)dl_buffer));
         osSpTaskStart(&tlist);
 
-        /*------ ½ªÎ»ÂÔ¤Á ------*/
         osRecvMesg(&rspMessageQ, NULL, OS_MESG_BLOCK);
         osRecvMesg(&rdpMessageQ, NULL, OS_MESG_BLOCK);   
 
