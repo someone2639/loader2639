@@ -80,10 +80,10 @@ void main(void) {
         gDPSetColorImage(gdl_head++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320,
                      gFrameBuffers[draw_frame]);
 
-        gFrameBuffers[0][0][0] = 0xFFFF;
-        gFrameBuffers[0][1][1] = 0xFFFF;
-        gFrameBuffers[0][2][2] = 0xFFFF;
-        gFrameBuffers[0][3][3] = 0xFFFF;
+        gFrameBuffers[draw_frame][0][0] = 0xFFFF;
+        gFrameBuffers[draw_frame][1][1] = 0xFFFF;
+        gFrameBuffers[draw_frame][2][2] = 0xFFFF;
+        gFrameBuffers[draw_frame][3][3] = 0xFFFF;
 
         gDPFullSync(gdl_head ++);
         gSPEndDisplayList(gdl_head ++);
