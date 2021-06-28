@@ -1,14 +1,14 @@
-#! smake
-#---------------------------------------------------------------------
-#	Copyright (C) 1997, Nintendo.
+#!smake
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Copyright(C) 1997, Nintendo.
 #
-#	File		Makefile
-#	Coded    by	Yoshitaka Yasumoto.	Mar 19, 1997.
-#	Modified by
-#	Comments
+#File Makefile
+#Coded by Yoshitaka Yasumoto.Mar 19, 1997.
+#Modified by
+#Comments
 #
-#	$Id: Makefile,v 1.17 1999/04/02 10:10:55 yoshida Exp $
-#---------------------------------------------------------------------
+#$Id : Makefile, v 1.17 1999 / 04 / 02 10 : 10 : 55 yoshida Exp $
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
 ROMNAME = loader2639
 
 BUILD_DIR = build
@@ -34,9 +34,9 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 
 
 ASM_DIRS = asm
-SRC_DIRS = src src/buffers
+SRC_DIRS = src src/buffers src/allocator src/filesystem src/sd_card src/everdrive src/io
 ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS))
-_ != mkdir -p $(BUILD_DIR) $(ALL_BUILD_DIRS)
+_ != mkdir -p $(ALL_BUILD_DIRS)
 
 C_FILES = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES = $(foreach dir,$(ASM_DIRS),$(wildcard $(dir)/*.s))
@@ -46,7 +46,7 @@ OBJECTS = $(foreach fl, $(C_FILES), $(BUILD_DIR)/$(fl:.c=.o)) \
 		  $(foreach fl, $(S_FILES), $(BUILD_DIR)/$(fl:.s=.o)) \
 		  $(BOOT_OBJ)
 
-LCINCS  =	-I. -I/usr/include/n64/PR
+LCINCS  =	-I. -I/usr/include/n64/PR -Iinclude/ -Isrc/
 LCOPTS =	-G 0
 
 LCDEFS  +=	-DF3DEX_GBI -DF3DEX_GBI_2 -DS2DEX_GBI_2
@@ -67,6 +67,8 @@ $(BUILD_DIR)/%.o: %.c
 
 test: $(GAME)
 	~/Downloads/mupen64plus/mupen64plus-gui $<
+test-pj64: $(GAME)
+	wine ~/Desktop/new64/Project64.exe $<
 clean:
 	rm -r $(BUILD_DIR)
 
