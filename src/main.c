@@ -3,6 +3,7 @@
 
 #define DLBUF_SIZE 6400
 #define SP_BOOT_UCODE_SIZE 0xD0
+#define STACKSIZE   0x2000
 
 u64 progStack[0x2000];
 u64 dl_buffer[DLBUF_SIZE];
@@ -53,11 +54,11 @@ OSContStatus    contStatus[MAXCONTROLLERS];
 OSContPad   contPad[MAXCONTROLLERS];
 u8      contExist;
 
-void main(void) {
-    osInitialize();
+static  OSThread    mainThread;
+static  u64     mainThreadStack[STACKSIZE/sizeof(u64)];
+void main2(void *r) {
 
-    osCreateViManager(OS_PRIORITY_VIMGR);
-    osViSetMode(&osViModeTable[OS_VI_NTSC_LAN1]);
+    
 
     osCreateMesgQueue(&dmaMessageQ,     &dmaMessageBuf,       1);
     osCreateMesgQueue(&rspMessageQ,     &rspMessageBuf,       1);
@@ -71,9 +72,12 @@ void main(void) {
     osSetEventMesg(OS_EVENT_SI, &siMessageQ,  NULL);
     osViSetEvent(&retraceMessageQ, NULL, 1);
 
+    osContInit(&siMessageQ, &contExist, contStatus);
+
     u8 draw_frame = 0;
 
     Gfx *gdl_head;
+    u16 col = 1;
 
     while (1) {
         gdl_head = dl_buffer;
@@ -82,11 +86,14 @@ void main(void) {
 
         gDPPipeSync(gdl_head++);
         gDPSetRenderMode(gdl_head++, G_RM_NOOP, G_RM_NOOP2);
-        gDPSetCycleType(gdl_head++,G_CYC_FILL);
+        gDPSetScissor(gdl_head++, G_SC_NON_INTERLACE, 0, 0, 320, 240);
+        gDPSetCombineMode(gdl_head++, G_CC_SHADE, G_CC_SHADE);
+        gDPSetCycleType(gdl_head++, G_CYC_FILL);
         gDPSetFillColor(gdl_head++, 0xFF5D<<16  | 0xFF5D);
+        col++; col |= 1;
+
         gDPFillRectangle(gdl_head++, 0, 0, 320, 240);
-        gDPPipeSync(gdl_head++);
-        
+
         gDPFullSync(gdl_head ++);
         gSPEndDisplayList(gdl_head ++);
 
@@ -101,6 +108,33 @@ void main(void) {
 
         draw_frame ^= 1;
     }
-
-
 }
+
+static  OSThread    idleThread;
+static  u64     idleThreadStack[STACKSIZE/sizeof(u64)];
+
+void idle(void *arg) {
+    osCreateViManager(OS_PRIORITY_VIMGR);
+  osViSetMode(&osViModeTable[OS_VI_NTSC_LAN1]);
+
+  /* Activate Pi Manager */
+  osCreatePiManager((OSPri)OS_PRIORITY_PIMGR,
+            &piMessageQ, piMessages, 8);
+  
+  /* Activate Main Thread */
+  osCreateThread(&mainThread, 3, main2, arg,
+         mainThreadStack+STACKSIZE/sizeof(u64), 10);
+  osStartThread(&mainThread);
+  osSetThreadPri(0,0);
+
+  /* Start Idle Loop */
+  while (1);
+}
+
+void main(void) {
+    osInitialize();
+    osCreateThread(&idleThread, 1, idle, (void *)0,
+           idleThreadStack+STACKSIZE/sizeof(u64), 10);
+    osStartThread(&idleThread);
+}
+
