@@ -34,7 +34,7 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 
 
 ASM_DIRS = asm
-SRC_DIRS = src src/buffers src/allocator src/filesystem src/sd_card src/everdrive src/io
+SRC_DIRS = src src/game src/buffers src/allocator src/filesystem src/sd_card src/everdrive src/io
 ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS))
 _ != mkdir -p $(ALL_BUILD_DIRS)
 

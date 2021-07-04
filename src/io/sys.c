@@ -4,9 +4,8 @@
 // See LICENSE file in the project root for full license information.
 //
 
+#include <ultra64.h>
 #include <stdint.h>
-// #include <dma.h>
-// #include <n64sys.h>
 #include "sys.h"
 #include "rom.h"
 
@@ -24,34 +23,39 @@ static inline volatile unsigned long get_ticks_ms(void) {
     return TICKS_READ() / (TICKS_PER_SECOND / 1000);
 }
 
-
+extern OSMesgQueue dmaMessageQ;
+extern OSPiHandle *carthandle;
 
 void dma_read_s(void * ram_address, unsigned long pi_address, unsigned long len) {
+    OSIoMesg dmaIoMesgBuf;
+    OSMesgQueue dmaMessageQ;
+    OSMesg dummyMesg;
 
-    u32 buff[256];
-   
-    u32 *bptr;
-    
-      u32 *rptr = (u32 *) ram_address;
+    dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
+    dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
+    dmaIoMesgBuf.dramAddr = ram_address;
+    dmaIoMesgBuf.devAddr = (u32)pi_address;
+    dmaIoMesgBuf.size = len;
 
-    u16 i;
-
-    IO_WRITE(PI_STATUS_REG, 3);
-    while (len) {
-    //     dma_read(buff, pi_address, 512);
-        while ((IO_READ(PI_STATUS_REG) & 3) != 0);
-        //while ((*((volatile u32*) PI_STATUS_REG) & 0x02) != 1);
-        // data_cache_hit_invalidate(buff, 512);
-        bptr = buff;
-        for (i = 0; i < 512 && i < len; i += 4)*rptr++ = *bptr++;
-        len = len < 512 ? 0 : len - 512;
-        pi_address += 512;
-    }
+    osInvalDCache((void *)ram_address, (s32) len); 
+    osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_READ);
+    osRecvMesg(&dmaMessageQ, &dummyMesg, OS_MESG_BLOCK);
 }
 
 void dma_write_s(void * ram_address, unsigned long pi_address, unsigned long len) {
-	// data_cache_hit_writeback(ram_address, len);
- //    dma_write(ram_address, pi_address, len);    
+	OSIoMesg dmaIoMesgBuf;
+    OSMesgQueue dmaMessageQ;
+    OSMesg dummyMesg;
+
+    dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
+    dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
+    dmaIoMesgBuf.dramAddr = ram_address;
+    dmaIoMesgBuf.devAddr = (u32)pi_address;
+    dmaIoMesgBuf.size = len;
+    
+    osWritebackDCache((void *)ram_address, (s32) len); 
+    osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_WRITE);
+    osRecvMesg(&dmaMessageQ, &dummyMesg, OS_MESG_BLOCK); 
 }
 
 void sleep(u32 ms) {

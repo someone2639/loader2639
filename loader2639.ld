@@ -55,6 +55,19 @@ SECTIONS {
         FILE(BUILD_DIR/src/everdrive/everdrive.o)
         FILE(BUILD_DIR/src/io/mem.o)
         FILE(BUILD_DIR/src/io/sys.o)
+        FILE(BUILD_DIR/src/game/boot.o)
+
+        */libultra_rom.a:*.o(.text*);
+        */libultra_rom.a:*.o(.data*);
+        */libultra_rom.a:*.o(.rodata*);
+
+        /usr/lib/n64/PR/rspboot.o(.text*);
+        /usr/lib/n64/PR/gspF3DEX2.fifo.o(.text*);
+        /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text*);
+
+        /usr/lib/n64/PR/rspboot.o(.data*);
+        /usr/lib/n64/PR/gspF3DEX2.fifo.o(.data*);
+        /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
 
         */libgcc.a:*.o(.text*);
         */libgcc.a:*.o(.data*);
@@ -72,6 +85,11 @@ SECTIONS {
         BUILD_DIR/src/everdrive/everdrive.o(.bss*);
         BUILD_DIR/src/io/mem.o(.bss*);
         BUILD_DIR/src/io/sys.o(.bss*);
+        BUILD_DIR/src/game/boot.o(.bss*);
+
+        */libultra_rom.a:*.o(COMMON);
+        */libultra_rom.a:*.o(.scommon*);
+        */libultra_rom.a:*.o(.bss*);
 
         */libgcc.a:*.o(COMMON);
         */libgcc.a:*.o(.scommon*);
@@ -80,6 +98,12 @@ SECTIONS {
     END_NOLOAD(code)
 
     _codeSegmentBssEnd = .;
+
+    . = 0x80200000;
+    BEGIN_NOLOAD(framebuffer){
+        BUILD_DIR/src/buffers/framebuffer.o(.bss*);
+    }
+    END_NOLOAD(framebuffer)
 
     . = 0x80300000;
     BEGIN_NOLOAD(allocator){

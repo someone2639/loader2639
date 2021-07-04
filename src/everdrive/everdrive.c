@@ -5,7 +5,7 @@
 //
 
 #include "everdrive.h"
-#include "sys.h"
+#include "io/sys.h"
 #include "errors.h"
 
 #define CMD0  0x40    // software reset
