@@ -1,7 +1,7 @@
 #include <ultra64.h>
 #include <PR/gs2dex.h>
 
-
+#include "n64_defs.h"
 #include "filesystem/ff.h"
 
 extern OSMesgQueue piMessageQ;
@@ -11,10 +11,7 @@ extern OSMesgQueue rspMessageQ;
 extern OSMesgQueue rdpMessageQ;
 extern OSMesgQueue retraceMessageQ;
 
-#define WIDTH 320
-#define HEIGHT 240
-
-extern u16 gFrameBuffers[2][320][240];
+extern u16 gFrameBuffers[][SCREEN_WIDTH * SCREEN_HEIGHT];
 
 void main(void) {
     // allocator_setup();
@@ -32,19 +29,17 @@ void main(void) {
 }
 
 Gfx clearCfb[] = {
-    gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0x10000000),
+    gsDPPipeSync(),
+    gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 2 << 24),
     gsDPSetCycleType(G_CYC_FILL),
     gsDPSetRenderMode(G_RM_NOOP, G_RM_NOOP2),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, WIDTH, HEIGHT),
+    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsDPSetFillColor(GPACK_RGBA5551(64, 64, 255, 1) << 16 | GPACK_RGBA5551(64, 64, 255, 1)),
-    gsDPFillRectangle(0, 0, WIDTH - 1, HEIGHT - 1),
+    gsDPFillRectangle(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1),
     gsSPEndDisplayList(),
 };
 
-#define RDPFIFO_SIZE    (8*1024/sizeof(u64))
-#define GLIST_LEN       2048
-#define SP_BOOT_UCODE_SIZE      0x00d0
 u64 system_rdpfifo[RDPFIFO_SIZE];
 u64 system_rspyield[OS_YIELD_DATA_SIZE/sizeof(u64)];
 
@@ -69,22 +64,23 @@ OSTask tlist = {
 
 Gfx glist[GLIST_LEN];
 
+u32 gTimer = 0;
+
 void main2(void *arg) {
     u8 draw_frame = 0;
     Gfx *gp;
 
     while (1) {
-        osRecvMesg(&retraceMessageQ, NULL, OS_MESG_BLOCK);
-
         gp = glist;
 
-        gSPSegment(gp++, 0x10, gFrameBuffers[draw_frame]);
+        gSPSegment(gp++, 2, gFrameBuffers[draw_frame]);
         gSPDisplayList(gp++, clearCfb);
 
         gDPFullSync(gp++);
         gSPEndDisplayList(gp++);
 
         tlist.t.data_ptr = (u64 *) glist;
+        tlist.t.data_size = ((u32) gp) - ((u32) glist);
         osWritebackDCache(glist, ((u32) gp) - ((u32) glist));
         osSpTaskStart(&tlist);
 
@@ -92,6 +88,11 @@ void main2(void *arg) {
         osRecvMesg(&rdpMessageQ, NULL, OS_MESG_BLOCK);
 
         osViSwapBuffer(gFrameBuffers[draw_frame]);
+        osRecvMesg(&retraceMessageQ, NULL, OS_MESG_BLOCK);
         draw_frame ^= 1;
+        gTimer++;
+        if (gTimer > 1000) {
+            *(vs8*)0=0;
+        }
     }
 }

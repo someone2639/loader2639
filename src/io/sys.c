@@ -29,7 +29,6 @@ extern OSPiHandle *carthandle;
 void dma_read_s(void * ram_address, unsigned long pi_address, unsigned long len) {
     OSIoMesg dmaIoMesgBuf;
     OSMesgQueue dmaMessageQ;
-    OSMesg dummyMesg;
 
     dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
     dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
@@ -39,13 +38,12 @@ void dma_read_s(void * ram_address, unsigned long pi_address, unsigned long len)
 
     osInvalDCache((void *)ram_address, (s32) len); 
     osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_READ);
-    osRecvMesg(&dmaMessageQ, &dummyMesg, OS_MESG_BLOCK);
+    osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK);
 }
 
 void dma_write_s(void * ram_address, unsigned long pi_address, unsigned long len) {
 	OSIoMesg dmaIoMesgBuf;
     OSMesgQueue dmaMessageQ;
-    OSMesg dummyMesg;
 
     dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
     dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
@@ -55,7 +53,7 @@ void dma_write_s(void * ram_address, unsigned long pi_address, unsigned long len
     
     osWritebackDCache((void *)ram_address, (s32) len); 
     osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_WRITE);
-    osRecvMesg(&dmaMessageQ, &dummyMesg, OS_MESG_BLOCK); 
+    osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK); 
 }
 
 void sleep(u32 ms) {

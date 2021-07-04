@@ -45,7 +45,7 @@ SECTIONS {
         BUILD_DIR/src/main.o(.data*);
         BUILD_DIR/src/main.o(.rodata*);
 
-        BUILD_DIR/src/allocator/allocator.o(.text*);
+        /*BUILD_DIR/src/allocator/allocator.o(.text*);*/
 
         FILE(BUILD_DIR/src/filesystem/ff.o)
         FILE(BUILD_DIR/src/filesystem/ffsystem.o)
@@ -56,6 +56,7 @@ SECTIONS {
         FILE(BUILD_DIR/src/io/mem.o)
         FILE(BUILD_DIR/src/io/sys.o)
         FILE(BUILD_DIR/src/game/boot.o)
+        FILE(BUILD_DIR/src/game/crash_screen.o)
 
         */libultra_rom.a:*.o(.text*);
         */libultra_rom.a:*.o(.data*);
@@ -86,6 +87,7 @@ SECTIONS {
         BUILD_DIR/src/io/mem.o(.bss*);
         BUILD_DIR/src/io/sys.o(.bss*);
         BUILD_DIR/src/game/boot.o(.bss*);
+        BUILD_DIR/src/game/crash_screen.o(.bss*);
 
         */libultra_rom.a:*.o(COMMON);
         */libultra_rom.a:*.o(.scommon*);
@@ -105,11 +107,11 @@ SECTIONS {
     }
     END_NOLOAD(framebuffer)
 
-    . = 0x80300000;
+    /*. = 0x80300000;
     BEGIN_NOLOAD(allocator){
         BUILD_DIR/src/allocator/allocator.o(.bss*);
     }
-    END_NOLOAD(allocator)
+    END_NOLOAD(allocator)*/
 
     /* Discard everything not specifically mentioned above. */
     /DISCARD/ : {

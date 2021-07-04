@@ -1,14 +1,3 @@
-#!smake
-#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
-#Copyright(C) 1997, Nintendo.
-#
-#File Makefile
-#Coded by Yoshitaka Yasumoto.Mar 19, 1997.
-#Modified by
-#Comments
-#
-#$Id : Makefile, v 1.17 1999 / 04 / 02 10 : 10 : 55 yoshida Exp $
-#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
 ROMNAME = loader2639
 
 BUILD_DIR = build
@@ -34,9 +23,12 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 
 
 ASM_DIRS = asm
-SRC_DIRS = src src/game src/buffers src/allocator src/filesystem src/sd_card src/everdrive src/io
-ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS))
+ASSET_DIRS = assets/crashscreen_font
+SRC_DIRS = src src/game src/buffers src/allocator src/filesystem \
+           src/sd_card src/everdrive src/io
+ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS) $(ASSET_DIRS))
 _ != mkdir -p $(ALL_BUILD_DIRS)
+_ != make -C tools
 
 C_FILES = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES = $(foreach dir,$(ASM_DIRS),$(wildcard $(dir)/*.s))
@@ -46,7 +38,7 @@ OBJECTS = $(foreach fl, $(C_FILES), $(BUILD_DIR)/$(fl:.c=.o)) \
 		  $(foreach fl, $(S_FILES), $(BUILD_DIR)/$(fl:.s=.o)) \
 		  $(BOOT_OBJ)
 
-LCINCS  =	-I. -I/usr/include/n64/PR -Iinclude/ -Isrc/
+LCINCS  =	-I. -I/usr/include/n64/PR -Iinclude/ -Isrc/ -Ibuild/
 LCOPTS =	-G 0
 
 LCDEFS  +=	-DF3DEX_GBI -DF3DEX_GBI_2 -DS2DEX_GBI_2
@@ -58,6 +50,22 @@ LDFLAGS =	-L/usr/lib/n64 $(N64LIB) -L$(N64_LIBGCCDIR) -lgcc
 default:	$(GAME)
 
 include $(COMMONRULES)
+
+# n64graphics rules
+
+TEXTURES = $(foreach dir,$(ASSET_DIRS),$(wildcard $(dir)/*.png))
+TEXTURE_INC = $(foreach fl, $(TEXTURES), $(BUILD_DIR)/$(fl:.png=.inc.c))
+
+$(BUILD_DIR)/%: %.png
+	$(call print,Converting:,$<,$@)
+	tools/n64graphics -s raw -i $@ -g $< -f $(lastword $(subst ., ,$@))
+
+$(BUILD_DIR)/%.inc.c: %.png
+	$(call print,Converting:,$<,$@)
+	tools/n64graphics -s u8 -i $@ -g $< -f $(lastword $(subst ., ,$(basename $<)))
+
+$(BUILD_DIR)/src/game/crash_screen.o: $(TEXTURE_INC)
+
 
 $(BUILD_DIR)/%.o: %.s
 	$(AS) -Wa,-Iasm -o $@ $<
@@ -78,7 +86,7 @@ $(BOOT_OBJ): $(BOOT)
 $(CP_LD_SCRIPT): $(LD_SCRIPT)
 	cpp -P -Wno-trigraphs -DBUILD_DIR=$(BUILD_DIR) -o $@ $<
 
-$(GAME): $(OBJECTS) $(CP_LD_SCRIPT)
+$(GAME): $(OBJECTS) $(TEXTURE_INC) $(CP_LD_SCRIPT)
 	$(LD) -L. -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) $(LDFLAGS)
 	$(OBJCOPY) --pad-to=0x100000 --gap-fill=0xFF $(ELF) $(GAME) -O binary
 	makemask $(GAME)

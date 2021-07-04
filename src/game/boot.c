@@ -1,7 +1,5 @@
-#define STACKSIZE 0x2000
-#define NUM_PI_MSGS 8
-
 #include <ultra64.h>
+#include "n64_defs.h"
 
 u64 progStack[STACKSIZE / sizeof(u64)];
 
@@ -50,6 +48,8 @@ void mainproc(void *arg) {
     /* Initialize Controller */
     osContInit(&siMessageQ, &contExist, contStatus);
     carthandle = osCartRomInit();
+
+    crash_screen_init();
 
     /* Call Main Function */
     main(arg);
