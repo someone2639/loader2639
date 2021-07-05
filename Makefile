@@ -81,6 +81,8 @@ test-pj64: $(GAME)
 clean:
 	rm -r $(BUILD_DIR)
 	make -C src/s2d_engine clean
+load: $(GAME)
+	cp $< /media/faris/E5AE-0C27/ED64P/OS64P.V64
 
 $(BOOT_OBJ): $(BOOT)
 	$(OBJCOPY) -I binary -B mips -O elf32-bigmips $< $@

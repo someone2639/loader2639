@@ -57,6 +57,7 @@ SECTIONS {
         FILE(BUILD_DIR/src/io/sys.o)
         FILE(BUILD_DIR/src/game/boot.o)
         FILE(BUILD_DIR/src/game/crash_screen.o)
+        FILE(BUILD_DIR/src/game/font.o)
         FILE(BUILD_DIR/src/math/sinf.o)
         FILE(BUILD_DIR/src/math/cosf.o)
 
@@ -94,7 +95,7 @@ SECTIONS {
         BUILD_DIR/src/io/sys.o(.bss*);
         BUILD_DIR/src/game/boot.o(.bss*);
         BUILD_DIR/src/game/crash_screen.o(.bss*);
-        
+
         BUILD_DIR/libs2d_engine.a:*.o(.bss*);
 
         */libultra_rom.a:*.o(COMMON);

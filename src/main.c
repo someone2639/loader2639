@@ -68,11 +68,6 @@ Gfx glist[GLIST_LEN];
 u32 gTimer = 0;
 Gfx *gdl_head;
 
-#include "s2d_engine/config.h"
-#include FONT_C_FILE
-
-extern float sinf(float);
-
 char *get_rom_name(void) {
     u8 *ret = allocator_malloc_dl(32);
     u32 *yeah = ret;
