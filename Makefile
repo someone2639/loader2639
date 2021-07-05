@@ -6,7 +6,7 @@ include /usr/include/n64/make/PRdefs
 
 OPTIMIZER       = -O2
 LCDEFS          = -DNDEBUG -D_FINALROM
-N64LIB          = -lultra_rom
+N64LIB          = -lultra_rom -ls2d_engine
 
 ELF		= $(BUILD_DIR)/$(ROMNAME).elf
 GAME	= $(BUILD_DIR)/$(ROMNAME).z64
@@ -25,10 +25,11 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 ASM_DIRS = asm
 ASSET_DIRS = assets/crashscreen_font
 SRC_DIRS = src src/game src/buffers src/allocator src/filesystem \
-           src/sd_card src/everdrive src/io
+           src/sd_card src/everdrive src/io src/math
 ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS) $(ASSET_DIRS))
 _ != mkdir -p $(ALL_BUILD_DIRS)
 _ != make -C tools
+_ != make -C src/s2d_engine COPY_DIR=../../build/
 
 C_FILES = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES = $(foreach dir,$(ASM_DIRS),$(wildcard $(dir)/*.s))
@@ -79,6 +80,7 @@ test-pj64: $(GAME)
 	wine ~/Desktop/new64/Project64.exe $<
 clean:
 	rm -r $(BUILD_DIR)
+	make -C src/s2d_engine clean
 
 $(BOOT_OBJ): $(BOOT)
 	$(OBJCOPY) -I binary -B mips -O elf32-bigmips $< $@
@@ -87,7 +89,7 @@ $(CP_LD_SCRIPT): $(LD_SCRIPT)
 	cpp -P -Wno-trigraphs -DBUILD_DIR=$(BUILD_DIR) -o $@ $<
 
 $(GAME): $(OBJECTS) $(TEXTURE_INC) $(CP_LD_SCRIPT)
-	$(LD) -L. -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) $(LDFLAGS)
+	$(LD) -L. -Lbuild -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) $(LDFLAGS)
 	$(OBJCOPY) --pad-to=0x100000 --gap-fill=0xFF $(ELF) $(GAME) -O binary
 	makemask $(GAME)
 

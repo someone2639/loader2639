@@ -7,6 +7,6 @@
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
 
-#define RDPFIFO_SIZE    (8*1024/sizeof(u64))
-#define GLIST_LEN       2048
+#define RDPFIFO_SIZE    6400
+#define GLIST_LEN       6400
 #define SP_BOOT_UCODE_SIZE      0xD0

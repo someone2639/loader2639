@@ -45,7 +45,7 @@ SECTIONS {
         BUILD_DIR/src/main.o(.data*);
         BUILD_DIR/src/main.o(.rodata*);
 
-        /*BUILD_DIR/src/allocator/allocator.o(.text*);*/
+        BUILD_DIR/src/allocator/allocator.o(.text*);
 
         FILE(BUILD_DIR/src/filesystem/ff.o)
         FILE(BUILD_DIR/src/filesystem/ffsystem.o)
@@ -57,6 +57,12 @@ SECTIONS {
         FILE(BUILD_DIR/src/io/sys.o)
         FILE(BUILD_DIR/src/game/boot.o)
         FILE(BUILD_DIR/src/game/crash_screen.o)
+        FILE(BUILD_DIR/src/math/sinf.o)
+        FILE(BUILD_DIR/src/math/cosf.o)
+
+        BUILD_DIR/libs2d_engine.a:*.o(.text*);
+        BUILD_DIR/libs2d_engine.a:*.o(.data*);
+        BUILD_DIR/libs2d_engine.a:*.o(.rodata*);
 
         */libultra_rom.a:*.o(.text*);
         */libultra_rom.a:*.o(.data*);
@@ -88,6 +94,8 @@ SECTIONS {
         BUILD_DIR/src/io/sys.o(.bss*);
         BUILD_DIR/src/game/boot.o(.bss*);
         BUILD_DIR/src/game/crash_screen.o(.bss*);
+        
+        BUILD_DIR/libs2d_engine.a:*.o(.bss*);
 
         */libultra_rom.a:*.o(COMMON);
         */libultra_rom.a:*.o(.scommon*);
@@ -101,17 +109,18 @@ SECTIONS {
 
     _codeSegmentBssEnd = .;
 
+
     . = 0x80200000;
     BEGIN_NOLOAD(framebuffer){
         BUILD_DIR/src/buffers/framebuffer.o(.bss*);
     }
     END_NOLOAD(framebuffer)
 
-    /*. = 0x80300000;
+    . = 0x80300000;
     BEGIN_NOLOAD(allocator){
         BUILD_DIR/src/allocator/allocator.o(.bss*);
     }
-    END_NOLOAD(allocator)*/
+    END_NOLOAD(allocator)
 
     /* Discard everything not specifically mentioned above. */
     /DISCARD/ : {

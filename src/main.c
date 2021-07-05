@@ -3,6 +3,7 @@
 
 #include "n64_defs.h"
 #include "filesystem/ff.h"
+#include "s2d_engine/s2d_print.h"
 
 extern OSMesgQueue piMessageQ;
 extern OSMesgQueue siMessageQ;
@@ -65,23 +66,53 @@ OSTask tlist = {
 Gfx glist[GLIST_LEN];
 
 u32 gTimer = 0;
+Gfx *gDisplayListHead;
+
+#include "s2d_engine/config.h"
+#include FONT_C_FILE
+
+extern float sinf(float);
+
+char *get_rom_name(void) {
+    u8 *ret = allocator_malloc_dl(32);
+    u32 *yeah = ret;
+
+    yeah[0] = *(u32 *)0xB0000020;
+    yeah[1] = *(u32 *)0xB0000024;
+    yeah[2] = *(u32 *)0xB0000028;
+    yeah[3] = *(u32 *)0xB000002C;
+    yeah[4] = *(u32 *)0xB0000030;
+    ret[20] = 0;
+
+    return ret;
+}
 
 void main2(void *arg) {
     u8 draw_frame = 0;
-    Gfx *gp;
 
     while (1) {
-        gp = glist;
+        gDisplayListHead = glist;
 
-        gSPSegment(gp++, 2, gFrameBuffers[draw_frame]);
-        gSPDisplayList(gp++, clearCfb);
+        gSPSegment(gDisplayListHead++, 2, gFrameBuffers[draw_frame]);
+        gSPDisplayList(gDisplayListHead++, clearCfb);
 
-        gDPFullSync(gp++);
-        gSPEndDisplayList(gp++);
+        if (gTimer > 0) {
+            s2d_init();
+            s2d_rdp_init();
+            static char d[0x50];
+            sprintf(d, SCALE "25" "The ROM name is %s", get_rom_name());
+            s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 50, ALIGN_LEFT, d);
+            s2d_stop();
+        }
+
+
+
+        gDPFullSync(gDisplayListHead++);
+        gSPEndDisplayList(gDisplayListHead++);
 
         tlist.t.data_ptr = (u64 *) glist;
-        tlist.t.data_size = ((u32) gp) - ((u32) glist);
-        osWritebackDCache(glist, ((u32) gp) - ((u32) glist));
+        tlist.t.data_size = ((u32) gDisplayListHead) - ((u32) glist);
+        osWritebackDCache(glist, ((u32) gDisplayListHead) - ((u32) glist));
         osSpTaskStart(&tlist);
 
         osRecvMesg(&rspMessageQ, NULL, OS_MESG_BLOCK);
@@ -91,8 +122,7 @@ void main2(void *arg) {
         osRecvMesg(&retraceMessageQ, NULL, OS_MESG_BLOCK);
         draw_frame ^= 1;
         gTimer++;
-        if (gTimer > 1000) {
-            *(vs8*)0=0;
-        }
+        
+        allocator_reset();
     }
 }

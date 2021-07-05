@@ -20,10 +20,15 @@ void *allocator_malloc(u32 size) {
 	return alloc_head;
 }
 
+
 void *allocator_malloc_align(u32 size, u32 align) {
 	alloc_head -= size;
 	while (!((u32) alloc_head & ~align)) {
 		alloc_head--;
 	}
 	return alloc_head;
+}
+
+void *allocator_malloc_dl(u32 size) {
+	return allocator_malloc_align(size, 16);
 }
