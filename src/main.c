@@ -66,7 +66,7 @@ OSTask tlist = {
 Gfx glist[GLIST_LEN];
 
 u32 gTimer = 0;
-Gfx *gDisplayListHead;
+Gfx *gdl_head;
 
 #include "s2d_engine/config.h"
 #include FONT_C_FILE
@@ -91,10 +91,10 @@ void main2(void *arg) {
     u8 draw_frame = 0;
 
     while (1) {
-        gDisplayListHead = glist;
+        gdl_head = glist;
 
-        gSPSegment(gDisplayListHead++, 2, gFrameBuffers[draw_frame]);
-        gSPDisplayList(gDisplayListHead++, clearCfb);
+        gSPSegment(gdl_head++, 2, gFrameBuffers[draw_frame]);
+        gSPDisplayList(gdl_head++, clearCfb);
 
         if (gTimer > 0) {
             s2d_init();
@@ -107,12 +107,12 @@ void main2(void *arg) {
 
 
 
-        gDPFullSync(gDisplayListHead++);
-        gSPEndDisplayList(gDisplayListHead++);
+        gDPFullSync(gdl_head++);
+        gSPEndDisplayList(gdl_head++);
 
         tlist.t.data_ptr = (u64 *) glist;
-        tlist.t.data_size = ((u32) gDisplayListHead) - ((u32) glist);
-        osWritebackDCache(glist, ((u32) gDisplayListHead) - ((u32) glist));
+        tlist.t.data_size = ((u32) gdl_head) - ((u32) glist);
+        osWritebackDCache(glist, ((u32) gdl_head) - ((u32) glist));
         osSpTaskStart(&tlist);
 
         osRecvMesg(&rspMessageQ, NULL, OS_MESG_BLOCK);
