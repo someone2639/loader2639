@@ -86,21 +86,22 @@ char *get_a_file(const char *dir) {
 
     FRESULT res;
 
+    char *ret = NULL;
+
     res = f_opendir(&drc, dir);
 
     if (res == FR_OK) {
         res = f_readdir(&drc, &fno);
         if (res == FR_OK) {
-            f_closedir(&dir);
-            return fno.fname;
+            ret = fno.fname;
         } else {
-            f_closedir(&dir);
-            return "ERROR cant readdir";
+            ret = "ERROR cant read dir";
         }
     } else {
-        f_closedir(&dir);
-        return "ERROR cant opendir";
+        ret = "ERROR cant open dir";
     }
+    f_closedir(&dir);
+    return ret;
 }
 
 FATFS loader_fs;
@@ -153,7 +154,20 @@ void cart_configure(void) {
     memSpiSetDma(0);
 }
 
-
+void stop(void) {
+    reboot_disable_interrupts();
+    curThread = *gActiveQueueLocations[gCurrentGame];
+    // Destroy all other threads
+    while (curThread && (curThread != curThread->tlnext))
+    {
+        OSThread *next = curThread->tlnext;
+        if (curThread != *gRunningThreadLocations[gCurrentGame])
+        {
+            gDestroyThreadLocations[gCurrentGame](curThread);
+        }
+        curThread = next;
+    }
+}
 
 void main2(void *arg) {
     u8 draw_frame = 0;
@@ -175,16 +189,8 @@ void main2(void *arg) {
                           "ROM Name: %s",
                     get_rom_name_with_dma());
             s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 50, ALIGN_LEFT, d);
-
-            if (osPiGetCmdQueue() == NULL) {
-                *(vs8 *) 0 = 0;
-            }
-            static char e[0x50];
-            sprintf(e,
-                    SCALE "25"
-                          "File Name: %s",
-                    get_a_file("/"));
-            s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 80, ALIGN_LEFT, e);
+            if (gTimer < 2)
+                loadrom("/tecto.z64");
 
             s2d_stop();
         }

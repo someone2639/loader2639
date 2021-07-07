@@ -96,6 +96,7 @@ SECTIONS {
         BUILD_DIR/src/io/sys.o(.bss*);
         BUILD_DIR/src/game/boot.o(.bss*);
         BUILD_DIR/src/game/crash_screen.o(.bss*);
+        BUILD_DIR/src/game/loadrom.o(.bss*);
 
         BUILD_DIR/libs2d_engine.a:*.o(.bss*);
 

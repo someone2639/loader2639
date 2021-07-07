@@ -96,6 +96,9 @@ void *memset(void *b, int c, int len)
   return(b);
 }
 
+void bootRom(void) {
+    // implement after loading
+}
 
 // load a z64/v64/n64 rom to the sdram
 void loadrom(u8 *buff) {
@@ -199,8 +202,8 @@ void loadrom(u8 *buff) {
             }
         }
 
-        if (result == FR_OK) {
-            bootRom(1);
-        }
+        // if (result == FR_OK) {
+        //     bootRom(1);
+        // }
     }
 }
