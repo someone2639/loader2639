@@ -3,6 +3,8 @@
 
 #include "n64_defs.h"
 #include "filesystem/ff.h"
+#include "sd_card/sd.h"
+#include "everdrive/everdrive.h"
 #include "s2d_engine/s2d_print.h"
 
 extern OSMesgQueue piMessageQ;
@@ -42,16 +44,16 @@ Gfx clearCfb[] = {
 };
 
 u64 system_rdpfifo[RDPFIFO_SIZE];
-u64 system_rspyield[OS_YIELD_DATA_SIZE/sizeof(u64)];
+u64 system_rspyield[OS_YIELD_DATA_SIZE / sizeof(u64)];
 
 OSTask tlist = {
     M_GFXTASK,                             /* task type                */
     OS_TASK_DP_WAIT | OS_TASK_LOADABLE,    /* task flags               */
     (u64 *) &rspbootTextStart,             /* boot ucode ptr           */
     SP_BOOT_UCODE_SIZE,                    /* boot ucode size          */
-    (u64 *) &gspS2DEX2_fifoTextStart,       /* ucode ptr                */
+    (u64 *) &gspS2DEX2_fifoTextStart,      /* ucode ptr                */
     SP_UCODE_SIZE,                         /* ucode size               */
-    (u64 *) &gspS2DEX2_fifoDataStart,       /* ucode data ptr           */
+    (u64 *) &gspS2DEX2_fifoDataStart,      /* ucode data ptr           */
     SP_UCODE_DATA_SIZE,                    /* ucode data size          */
     NULL,                                  /* dram stack      (ÉÔ»ÈÍÑ) */
     0,                                     /* dram stack size (ÉÔ»ÈÍÑ) */
@@ -68,23 +70,96 @@ Gfx glist[GLIST_LEN];
 u32 gTimer = 0;
 Gfx *gdl_head;
 
-char *get_rom_name(void) {
+char *get_rom_name_with_dma(void) {
     u8 *ret = allocator_malloc_dl(32);
     u32 *yeah = ret;
 
-    yeah[0] = *(u32 *)0xB0000020;
-    yeah[1] = *(u32 *)0xB0000024;
-    yeah[2] = *(u32 *)0xB0000028;
-    yeah[3] = *(u32 *)0xB000002C;
-    yeah[4] = *(u32 *)0xB0000030;
+    dma_read_s(ret, 0xB0000020, 20);
     ret[20] = 0;
 
     return ret;
 }
 
+char *get_a_file(const char *dir) {
+    DIR drc;
+    static FILINFO fno;
+
+    FRESULT res;
+
+    res = f_opendir(&drc, dir);
+
+    if (res == FR_OK) {
+        res = f_readdir(&drc, &fno);
+        if (res == FR_OK) {
+            f_closedir(&dir);
+            return fno.fname;
+        } else {
+            f_closedir(&dir);
+            return "ERROR cant readdir";
+        }
+    } else {
+        f_closedir(&dir);
+        return "ERROR cant opendir";
+    }
+}
+
+FATFS loader_fs;
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char *) s1 - *(const unsigned char *) s2;
+}
+
+int strneql(const char *s1, const char *s2, int len) {
+    return (strcmp(s1, s2) == 0);
+}
+
+void init_filesystem(void) {
+    evd_ulockRegs();
+    sleep(100);
+
+    FRESULT result = f_mount(&loader_fs, "", 1);
+    if (result != FR_OK) {
+
+    } else {
+        // fat_initialized = 1;
+    }
+}
+
+void cart_configure(void) {
+    u16 msg = 0;
+    u8 buff[16];
+    u16 firm;
+
+    evd_init();
+    // REG_MAX_MSG
+    evd_setCfgBit(ED_CFG_SDRAM_ON, 0);
+    dma_read_s(buff, ROM_ADDR + 0x20, 16);
+    memRomRead32(0x38); // TODO: this should be displayed somewhere...
+    evd_setCfgBit(ED_CFG_SDRAM_ON, 1);
+
+    firm = evd_getFirmVersion();
+
+    if (strneql("ED64 SD boot", buff, 12)
+        && firm >= 0x0116) // TODO: can this be moved before the firmware is loaded?
+    {
+        sdSetInterface(DISK_IFACE_SD);
+    } else {
+        sdSetInterface(DISK_IFACE_SPI);
+    }
+    memSpiSetDma(0);
+}
+
+
+
 void main2(void *arg) {
     u8 draw_frame = 0;
 
+    cart_configure();
+    init_filesystem();
     while (1) {
         gdl_head = glist;
 
@@ -95,12 +170,24 @@ void main2(void *arg) {
             s2d_init();
             s2d_rdp_init();
             static char d[0x50];
-            sprintf(d, SCALE "25" "The ROM name is %s", get_rom_name());
+            sprintf(d,
+                    SCALE "25"
+                          "ROM Name: %s",
+                    get_rom_name_with_dma());
             s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 50, ALIGN_LEFT, d);
+
+            if (osPiGetCmdQueue() == NULL) {
+                *(vs8 *) 0 = 0;
+            }
+            static char e[0x50];
+            sprintf(e,
+                    SCALE "25"
+                          "File Name: %s",
+                    get_a_file("/"));
+            s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 80, ALIGN_LEFT, e);
+
             s2d_stop();
         }
-
-
 
         gDPFullSync(gdl_head++);
         gSPEndDisplayList(gdl_head++);
@@ -117,7 +204,7 @@ void main2(void *arg) {
         osRecvMesg(&retraceMessageQ, NULL, OS_MESG_BLOCK);
         draw_frame ^= 1;
         gTimer++;
-        
+
         allocator_reset();
     }
 }

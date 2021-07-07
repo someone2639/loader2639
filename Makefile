@@ -54,18 +54,18 @@ include $(COMMONRULES)
 
 # n64graphics rules
 
-TEXTURES = $(foreach dir,$(ASSET_DIRS),$(wildcard $(dir)/*.png))
-TEXTURE_INC = $(foreach fl, $(TEXTURES), $(BUILD_DIR)/$(fl:.png=.inc.c))
+# TEXTURES = $(foreach dir,$(ASSET_DIRS),$(wildcard $(dir)/*.png))
+# TEXTURE_INC = $(foreach fl, $(TEXTURES), $(BUILD_DIR)/$(fl:.png=.inc.c))
 
-$(BUILD_DIR)/%: %.png
-	$(call print,Converting:,$<,$@)
-	tools/n64graphics -s raw -i $@ -g $< -f $(lastword $(subst ., ,$@))
+# $(BUILD_DIR)/%: %.png
+# 	$(call print,Converting:,$<,$@)
+# 	tools/n64graphics -s raw -i $@ -g $< -f $(lastword $(subst ., ,$@))
 
-$(BUILD_DIR)/%.inc.c: %.png
-	$(call print,Converting:,$<,$@)
-	tools/n64graphics -s u8 -i $@ -g $< -f $(lastword $(subst ., ,$(basename $<)))
+# $(BUILD_DIR)/%.inc.c: %.png
+# 	$(call print,Converting:,$<,$@)
+# 	tools/n64graphics -s u8 -i $@ -g $< -f $(lastword $(subst ., ,$(basename $<)))
 
-$(BUILD_DIR)/src/game/crash_screen.o: $(TEXTURE_INC)
+# $(BUILD_DIR)/src/game/crash_screen.o: $(TEXTURE_INC)
 
 
 $(BUILD_DIR)/%.o: %.s

@@ -16,7 +16,7 @@ u8 gCrashScreenCharToGlyph[128] = {
     23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, -1, -1, -1, -1, -1,
 };
 
-u8 gCrashScreenFont[(7 * 9 + 1) * 4] = {
+u32 gCrashScreenFont[7 * 9 + 1] = {
     #include "assets/crashscreen_font/font.ia1.inc.c"
 };
 

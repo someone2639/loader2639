@@ -9,6 +9,7 @@
 #include "sys.h"
 #include "rom.h"
 
+#define ALIGN16(val) (((val) + 0xF) & ~0xF)
 
 u32 asm_date;
 
@@ -26,34 +27,46 @@ static inline volatile unsigned long get_ticks_ms(void) {
 extern OSMesgQueue dmaMessageQ;
 extern OSPiHandle *carthandle;
 
-void dma_read_s(void * ram_address, unsigned long pi_address, unsigned long len) {
-    OSIoMesg dmaIoMesgBuf;
-    OSMesgQueue dmaMessageQ;
+// an actual DMA copy
+void dma_copy(OSPiHandle *handle, u32 physAddr, u32 vAddr, u32 size, u8 direction) {
+    OSIoMesg dmaIoMesg;
 
-    dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
-    dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
-    dmaIoMesgBuf.dramAddr = ram_address;
-    dmaIoMesgBuf.devAddr = (u32)pi_address;
-    dmaIoMesgBuf.size = len;
-
-    osInvalDCache((void *)ram_address, (s32) len); 
-    osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_READ);
-    osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK);
+    if (direction == OS_WRITE) {
+        osWritebackDCache((void*)vAddr, size);
+    } else {
+        osInvalDCache((void*)vAddr, size);
+    }
+    dmaIoMesg.hdr.pri = 0;
+    dmaIoMesg.hdr.retQueue = &dmaMessageQ;
+    dmaIoMesg.size = 0x10000;
+    while (size >= 0x10001) {
+        dmaIoMesg.dramAddr = (void*)vAddr;
+        dmaIoMesg.devAddr = physAddr;
+        if (osEPiStartDma(handle, &dmaIoMesg, direction) == -1) {
+            *(vs8*)0=0;
+        }
+        osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK);
+        size -= 0x10000;
+        physAddr += 0x10000;
+        vAddr += 0x10000;
+    }
+    if (size != 0) {
+        dmaIoMesg.dramAddr = (void*)vAddr;
+        dmaIoMesg.devAddr = physAddr;
+        dmaIoMesg.size = size;
+        if (osEPiStartDma(handle, &dmaIoMesg, direction) == -1) {
+            *(vs8*)0=0;
+        }
+        osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK);
+    }
 }
 
-void dma_write_s(void * ram_address, unsigned long pi_address, unsigned long len) {
-	OSIoMesg dmaIoMesgBuf;
-    OSMesgQueue dmaMessageQ;
+void dma_read_s(void *vAddr, unsigned long physAddr, unsigned long size) {
+    dma_copy(carthandle, physAddr, (u32)vAddr, size, OS_READ);
+}
 
-    dmaIoMesgBuf.hdr.pri = OS_MESG_PRI_NORMAL;
-    dmaIoMesgBuf.hdr.retQueue = &dmaMessageQ;
-    dmaIoMesgBuf.dramAddr = ram_address;
-    dmaIoMesgBuf.devAddr = (u32)pi_address;
-    dmaIoMesgBuf.size = len;
-    
-    osWritebackDCache((void *)ram_address, (s32) len); 
-    osEPiStartDma(carthandle, &dmaIoMesgBuf, OS_WRITE);
-    osRecvMesg(&dmaMessageQ, NULL, OS_MESG_BLOCK); 
+void dma_write_s(void *vAddr, unsigned long physAddr, unsigned long size) {
+	dma_copy(carthandle, physAddr, (u32)vAddr, size, OS_WRITE);
 }
 
 void sleep(u32 ms) {
