@@ -28,7 +28,6 @@ OSPiHandle *carthandle;
 OSIoMesg dmaIOMessageBuf;
 
 OSContStatus contStatus[MAXCONTROLLERS];
-OSContPad contPad[MAXCONTROLLERS];
 u8 contExist;
 
 void mainproc(void *arg) {

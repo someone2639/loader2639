@@ -1,18 +1,22 @@
-#include <PR/ultratypes.h>
+#include <ultra64.h>
 
 #include "allocator.h"
 
-// 1mb pool
-static u8 allocator_pool[0x100000];
+// pool
+extern u8 _framebufferSegmentBssEnd[];
 
+static u8 *allocator_pool;
 static u8 *alloc_head;
+static u32 memSize;
 
 void allocator_setup(void) {
-	alloc_head = &allocator_pool[0x100000];
+	allocator_pool = _framebufferSegmentBssEnd;
+	memSize = osGetMemSize();
+	alloc_head = 0x80000000 + memSize;
 }
 
 void allocator_reset(void) {
-	allocator_setup();
+	alloc_head = 0x80000000 + memSize;
 }
 
 void *allocator_malloc(u32 size) {

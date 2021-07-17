@@ -154,27 +154,34 @@ void cart_configure(void) {
     memSpiSetDma(0);
 }
 
-void stop(void) {
-    reboot_disable_interrupts();
-    curThread = *gActiveQueueLocations[gCurrentGame];
-    // Destroy all other threads
-    while (curThread && (curThread != curThread->tlnext))
-    {
-        OSThread *next = curThread->tlnext;
-        if (curThread != *gRunningThreadLocations[gCurrentGame])
-        {
-            gDestroyThreadLocations[gCurrentGame](curThread);
-        }
-        curThread = next;
-    }
+OSContPad controllers[MAXCONTROLLERS];
+
+void update_controllers(void) {
+    osContStartReadData(&siMessageQ);
+    osRecvMesg(&siMessageQ, NULL, OS_MESG_BLOCK);
+
+    osContGetReadData(controllers);
+
 }
+extern u8 _rebootSegmentStart[], _rebootSegmentRomStart[], _rebootSegmentRomEnd[];
+int align1 = 5;
+
+
+#include "game/fs_api.h"
+
+char cur_directory[MAX_FILENAME_LEN + 1] = "/";
+
 
 void main2(void *arg) {
     u8 draw_frame = 0;
 
     cart_configure();
     init_filesystem();
+    dma_read_s(_rebootSegmentStart, _rebootSegmentRomStart, (u32) _rebootSegmentRomEnd - (u32) _rebootSegmentRomStart);
+    
     while (1) {
+        update_controllers();
+
         gdl_head = glist;
 
         gSPSegment(gdl_head++, 2, gFrameBuffers[draw_frame]);
@@ -184,13 +191,15 @@ void main2(void *arg) {
             s2d_init();
             s2d_rdp_init();
             static char d[0x50];
-            sprintf(d,
-                    SCALE "25"
-                          "ROM Name: %s",
-                    get_rom_name_with_dma());
-            s2d_print_alloc(50 + (4.0f * sinf(gTimer / 5.0f)), 50, ALIGN_LEFT, d);
-            if (gTimer < 2)
-                loadrom("/tecto.z64");
+
+            if (controllers[0].button & A_BUTTON) {
+                fs_ls(cur_directory);
+            }
+
+
+            if (controllers[0].button & B_BUTTON) {
+                bootRom();
+            }
 
             s2d_stop();
         }

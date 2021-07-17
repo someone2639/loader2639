@@ -61,6 +61,7 @@ SECTIONS {
         FILE(BUILD_DIR/src/math/sinf.o)
         FILE(BUILD_DIR/src/math/cosf.o)
         FILE(BUILD_DIR/src/game/loadrom.o)
+        FILE(BUILD_DIR/src/game/fs_api.o)
 
         BUILD_DIR/libs2d_engine.a:*.o(.text*);
         BUILD_DIR/libs2d_engine.a:*.o(.data*);
@@ -85,6 +86,7 @@ SECTIONS {
     END_SEG(code)
     BEGIN_NOLOAD(code) {
         BUILD_DIR/src/main.o(.bss);
+        BUILD_DIR/src/allocator/allocator.o(.bss*);
 
         BUILD_DIR/src/filesystem/ff.o(.bss*);
         BUILD_DIR/src/filesystem/ffsystem.o(.bss*);
@@ -97,6 +99,7 @@ SECTIONS {
         BUILD_DIR/src/game/boot.o(.bss*);
         BUILD_DIR/src/game/crash_screen.o(.bss*);
         BUILD_DIR/src/game/loadrom.o(.bss*);
+        BUILD_DIR/src/game/fs_api.o(.bss*);
 
         BUILD_DIR/libs2d_engine.a:*.o(.bss*);
 
@@ -112,18 +115,38 @@ SECTIONS {
 
     _codeSegmentBssEnd = .;
 
+    BEGIN_SEG(testrom, 0) {
+        BUILD_DIR/cringe/rom.o(.text);
+    }
+    END_SEG(testrom)
+
+    BEGIN_SEG(reboot, 0x80100400) SUBALIGN(16) {
+        FILE(BUILD_DIR/src/game/reboot.o)
+        BUILD_DIR/asm/reboot_asm.o(.text);
+    }
+    END_SEG(reboot)
+    BEGIN_NOLOAD(reboot) {
+        BUILD_DIR/src/game/reboot.o(.bss*);
+        . = ALIGN(16);
+    }
+    END_NOLOAD(reboot)
+
+    BEGIN_SEG(ram_kernel, 0x80000000) {
+        FILE(BUILD_DIR/asm/ram_kernel.o)
+    }
+    END_SEG(ram_kernel)
+    ramkernel_size = SIZEOF(.ram_kernel);
+
 
     . = 0x80200000;
     BEGIN_NOLOAD(framebuffer){
         BUILD_DIR/src/buffers/framebuffer.o(.bss*);
+        . = ALIGN(64);
     }
     END_NOLOAD(framebuffer)
 
-    . = 0x80300000;
-    BEGIN_NOLOAD(allocator){
-        BUILD_DIR/src/allocator/allocator.o(.bss*);
-    }
-    END_NOLOAD(allocator)
+    . = _framebufferSegmentBssEnd;
+
 
     /* Discard everything not specifically mentioned above. */
     /DISCARD/ : {

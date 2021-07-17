@@ -22,7 +22,7 @@ BOOT		= /usr/lib/n64/PR/bootcode/boot.6102
 BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 
 
-ASM_DIRS = asm
+ASM_DIRS = asm cringe
 ASSET_DIRS = assets/crashscreen_font
 SRC_DIRS = src src/game src/buffers src/allocator src/filesystem \
            src/sd_card src/everdrive src/io src/math
@@ -67,9 +67,12 @@ include $(COMMONRULES)
 
 # $(BUILD_DIR)/src/game/crash_screen.o: $(TEXTURE_INC)
 
+CFLAGS = -c -mabi=32 -ffreestanding -mfix4300 $(LCOPTS) \
+         -DNDEBUG -D_FINALROM $(LCDEFS) \
+         $(LCINCS) -I/usr/include/n64 -g
 
 $(BUILD_DIR)/%.o: %.s
-	$(AS) -Wa,-Iasm -o $@ $<
+	$(AS) -Wa,-Iasm -Wa,-Icringe -Wa,-Iinclude -o $@ $<
 
 $(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -o $@ $<
@@ -92,7 +95,7 @@ $(CP_LD_SCRIPT): $(LD_SCRIPT)
 
 $(GAME): $(OBJECTS) $(TEXTURE_INC) $(CP_LD_SCRIPT)
 	$(LD) -L. -Lbuild -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) $(LDFLAGS)
-	$(OBJCOPY) --pad-to=0x100000 --gap-fill=0xFF $(ELF) $(GAME) -O binary
+	$(OBJCOPY) --pad-to=0x200000 --gap-fill=0xFF $(ELF) $(GAME) -O binary
 	makemask $(GAME)
 
 print-% : ; $(info $* is a $(flavor $*) variable set to [$($*)]) @true

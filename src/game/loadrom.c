@@ -96,8 +96,16 @@ void *memset(void *b, int c, int len)
   return(b);
 }
 
+extern FATFS loader_fs;
+
 void bootRom(void) {
-    // implement after loading
+    reboot_disable_interrupts();
+    evd_setSaveType(SAVE_TYPE_EEP4k);
+    evd_lockRegs();
+    sleep(10);
+    f_mount(0, "", 0);
+    sleep(10);
+    reboot_game((volatile)0x00000000);
 }
 
 // load a z64/v64/n64 rom to the sdram
@@ -132,44 +140,6 @@ void loadrom(u8 *buff) {
             swapped = 1;
             swap_header(headerdata, 512);
         }
-
-        // char 32-51 name
-        unsigned char rom_name[32];
-
-        for (int u = 0; u < 19; u++) {
-            if (u != 0)
-                sprintf(rom_name, "%s%c", rom_name, headerdata[32 + u]);
-            else
-                sprintf(rom_name, "%c", headerdata[32 + u]);
-        }
-
-        // rom name
-        sprintf(rom_name, "%s", trim(rom_name));
-
-        // rom size
-        sprintf(rom_name, "Size: %iMB", fsizeMB);
-
-        // unique cart id for gametype
-        unsigned char cartID_str[12];
-        sprintf(cartID_str, "ID: %c%c%c%c", headerdata[0x3B], headerdata[0x3C], headerdata[0x3D],
-                headerdata[0x3E]);
-
-        int cic, save;
-
-        // cic = get_cic(&headerdata[0x40]);
-
-        unsigned char cartID_short[4];
-        sprintf(cartID_short, "%c%c\0", headerdata[0x3C], headerdata[0x3D]);
-
-        
-        // new rom_config
-        // boot_cic = rom_config[1] + 1;
-        // boot_save = rom_config[2];
-        // force_tv = rom_config[3];
-        // cheats_on = rom_config[4];
-        // checksum_fix_on = rom_config[5];
-        // boot_country = rom_config[7]; // boot_block
-
 
         if (swapped == 1) {
             while (evd_isDmaBusy())
