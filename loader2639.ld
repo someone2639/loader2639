@@ -62,6 +62,7 @@ SECTIONS {
         FILE(BUILD_DIR/src/math/cosf.o)
         FILE(BUILD_DIR/src/game/loadrom.o)
         FILE(BUILD_DIR/src/game/fs_api.o)
+        FILE(BUILD_DIR/src/lib/string.o)
 
         BUILD_DIR/libs2d_engine.a:*.o(.text*);
         BUILD_DIR/libs2d_engine.a:*.o(.data*);

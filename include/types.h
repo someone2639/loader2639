@@ -10,4 +10,6 @@
 #include <stdint.h>
 #include <PR/ultratypes.h>
 
+typedef char *String;
+
 #endif	/* _TYPES_H */

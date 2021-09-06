@@ -6,17 +6,19 @@
 extern u8 _framebufferSegmentBssEnd[];
 
 static u8 *allocator_pool;
-static u8 *alloc_head;
+u8 *alloc_head;
 static u32 memSize;
 
+#define ALIGN16(x) ((((u32)x) + 0x10) & ~0xF)
+
 void allocator_setup(void) {
-	allocator_pool = _framebufferSegmentBssEnd;
+	allocator_pool = ALIGN16(_framebufferSegmentBssEnd);
 	memSize = osGetMemSize();
-	alloc_head = 0x80000000 + memSize;
+	alloc_head = 0x80000000 + osMemSize;
 }
 
 void allocator_reset(void) {
-	alloc_head = 0x80000000 + memSize;
+	alloc_head = 0x80000000 + osMemSize;
 }
 
 void *allocator_malloc(u32 size) {

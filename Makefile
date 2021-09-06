@@ -25,7 +25,7 @@ BOOT_OBJ	= $(BUILD_DIR)/boot.6102.o
 ASM_DIRS = asm cringe
 ASSET_DIRS = assets/crashscreen_font
 SRC_DIRS = src src/game src/buffers src/allocator src/filesystem \
-           src/sd_card src/everdrive src/io src/math
+           src/sd_card src/everdrive src/io src/math src/lib
 ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS) $(ASSET_DIRS))
 _ != mkdir -p $(ALL_BUILD_DIRS)
 _ != make -C tools

@@ -3,6 +3,8 @@
 #define MAX_LIST 20
 #define MAX_FILENAME_LEN 256
 #define MAX_FILES 500
+#define MAX_DIR_DEPTH 20
+#define FULLPATH_LEN 1024
 
 enum {
     DT_UNKNOWN = 0,
@@ -21,3 +23,15 @@ typedef struct {
     u32 color;
     u8 filename[MAX_FILENAME_LEN + 1];
 } direntry_t;
+
+extern int cursor, page;
+extern direntry_t fsFileList[MAX_FILES];
+
+typedef struct curdir_t {
+    u8 dirname[FULLPATH_LEN + 1];
+    u8 lastChange[MAX_FILENAME_LEN + 1];
+    u8 slashLocations[MAX_DIR_DEPTH + 1];
+    u8 slashIdx;
+} CurDir;
+
+extern CurDir cur_directory;

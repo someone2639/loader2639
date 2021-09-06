@@ -4,6 +4,7 @@
 #include "n64_defs.h"
 #include "filesystem/ff.h"
 #include "sd_card/sd.h"
+#include "game/fs_api.h"
 #include "everdrive/everdrive.h"
 #include "s2d_engine/s2d_print.h"
 
@@ -154,14 +155,32 @@ void cart_configure(void) {
     memSpiSetDma(0);
 }
 
-OSContPad controllers[MAXCONTROLLERS];
+OSContPad conts[MAXCONTROLLERS];
+
+struct Controller {
+    u16 button;
+    u16 buttonHeld;
+};
+struct Controller controllers[MAXCONTROLLERS];
 
 void update_controllers(void) {
     osContStartReadData(&siMessageQ);
     osRecvMesg(&siMessageQ, NULL, OS_MESG_BLOCK);
 
-    osContGetReadData(controllers);
-
+    osContGetReadData(conts);
+    for (int i = 0; i < MAXCONTROLLERS; i++) {
+        controllers[i].button = conts[i].button;
+        // if (conts[i].button == controllers[i].buttonHeld) {
+        //     controllers[i].button = 0;
+        // } else {
+        //     controllers[i].button = conts[i].button;
+        // }
+        // if (controllers[i].buttonHeld == 0 && controllers[i].button != 0) {
+        //     controllers[i].buttonHeld = controllers[i].button;
+        // } else {
+        //     controllers[i].buttonHeld = 0;
+        // }
+    }
 }
 extern u8 _rebootSegmentStart[], _rebootSegmentRomStart[], _rebootSegmentRomEnd[];
 int align1 = 5;
@@ -169,8 +188,15 @@ int align1 = 5;
 
 #include "game/fs_api.h"
 
-char cur_directory[MAX_FILENAME_LEN + 1] = "/";
+CurDir cur_directory = {
+    "/", // name
+    {0}, // slash locations
+    0,   // top of slash stack
+};
 
+int fs_loaded_latch = 0;
+int romLoaded = 0;
+int romDMALatch = 0;
 
 void main2(void *arg) {
     u8 draw_frame = 0;
@@ -192,13 +218,53 @@ void main2(void *arg) {
             s2d_rdp_init();
             static char d[0x50];
 
+            if (fs_loaded_latch == 0) {
+                fs_ls(cur_directory.dirname);
+                if (fsFileList[0].filename[0] != '\0') {
+                    fs_loaded_latch = 1;
+                }
+            }
+
+            static char mydir[257];
+            sprintf(mydir, SCALE "25" "%s", cur_directory.dirname);
+            s2d_print_alloc(40 + 5 * sinf(gTimer / 10.0f), 10, ALIGN_LEFT, mydir);
+            print_dir(fsFileList, cursor, 0, 0, 10);
+
+
+            if (controllers[0].button & START_BUTTON) {
+                // if (romLoaded) {
+                    bootRom(fsFileList[cursor]);
+                // }
+            }
+
             if (controllers[0].button & A_BUTTON) {
-                fs_ls(cur_directory);
+                if (fsFileList[cursor].type == DT_DIR){
+                    curdir_Change(&cur_directory, fsFileList[cursor].filename);
+                    fs_loaded_latch = 0;
+                } else if (fsFileList[cursor].type == DT_REG) {
+                    loadrom(fsFileList[cursor].filename);
+                }
+            }
+
+            if (controllers[0].button & B_BUTTON) {
+                curdir_Unchange(&cur_directory);
             }
 
 
-            if (controllers[0].button & B_BUTTON) {
-                bootRom();
+            if (controllers[0].button & U_CBUTTONS) {
+                cursor--;
+                if (cursor < 0) cursor = 0;
+            }
+            if (controllers[0].button & D_CBUTTONS) {
+                cursor++;
+                if (cursor > 10) cursor = 10;
+            }
+            if (controllers[0].button & R_CBUTTONS) {
+                page++;
+            }
+            if (controllers[0].button & L_CBUTTONS) {
+                page--;
+                if (page < 0) page = 0;
             }
 
             s2d_stop();

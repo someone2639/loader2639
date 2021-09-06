@@ -252,8 +252,8 @@ void reboot_game_internal(u32 devAddr)
     while (reboot_get_pi_status() & (PI_STATUS_DMA_BUSY | PI_STATUS_ERROR));
 
 
-    clear_ram_and_boot(entryPoint);
-    // __asm__ __volatile__("jr %0" : : "r" (entryPoint));
+    // clear_ram_and_boot(entryPoint);
+    __asm__ __volatile__("jr %0" : : "r" (entryPoint));
     // simulate_boot(CIC_6102, CIC_6102);
     // __asm__ __volatile__("j 0xA4000040");
 }
