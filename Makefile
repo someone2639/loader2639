@@ -29,7 +29,7 @@ SRC_DIRS = src src/game src/buffers src/allocator src/filesystem \
 ALL_BUILD_DIRS = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(ASM_DIRS) $(SRC_DIRS) $(ASSET_DIRS))
 _ != mkdir -p $(ALL_BUILD_DIRS)
 _ != make -C tools
-_ != make -C src/s2d_engine COPY_DIR=../../build/
+_ != make -C src/s2d_engine COPY_DIR=../../build/ CROSS=mips-n64-
 
 C_FILES = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES = $(foreach dir,$(ASM_DIRS),$(wildcard $(dir)/*.s))
@@ -78,14 +78,14 @@ $(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 test: $(GAME)
-	~/Downloads/mupen64plus/mupen64plus-gui $<
+	~/Devel/m64p/mupen64plus/mupen64plus-gui $<
 test-pj64: $(GAME)
 	wine ~/Desktop/new64/Project64.exe $<
 clean:
 	rm -r $(BUILD_DIR)
 	make -C src/s2d_engine clean
 load: $(GAME)
-	cp $< /media/faris/E5AE-0C27/ED64P/OS64P.V64
+	cp $< /run/media/faris/n64/ED64P/OS64P.V64
 
 $(BOOT_OBJ): $(BOOT)
 	$(OBJCOPY) -I binary -B mips -O elf32-bigmips $< $@

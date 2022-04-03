@@ -21,7 +21,7 @@
 
 #include "ff.h"			/* Declarations of FatFs API */
 #include "diskio.h"		/* Declarations of device I/O functions */
-
+#include "debug.h"
 
 /*--------------------------------------------------------------------------
 
@@ -2656,15 +2656,23 @@ FRESULT create_name (	/* FR_OK: successful, FR_INVALID_NAME: could not create */
 	const TCHAR** path	/* Pointer to pointer to the segment in the path string */
 )
 {
-#if FF_USE_LFN		/* LFN configuration */
 	BYTE b, cf;
 	WCHAR w, *lfn;
 	UINT i, ni, si, di;
 	const TCHAR *p;
 
+	BYTE isRoot = 0;
 
 	/* Create LFN in Unicode */
 	p = *path; lfn = dp->obj.fs->lfnbuf; si = di = 0;
+
+	if (p[0] == '/' && p[1] == 0) {
+		// isRoot = 1;
+		// root dir, idk what to do here
+	} else {
+		// p++;
+	}
+
 	for (;;) {
 		w = p[si++];					/* Get a character */
 		if (w < ' ') break;				/* Break if end of the path name */
@@ -2672,23 +2680,32 @@ FRESULT create_name (	/* FR_OK: successful, FR_INVALID_NAME: could not create */
 			while (p[si] == '/' || p[si] == '\\') si++;	/* Skip duplicated separator if exist */
 			break;
 		}
+		_assert(di < FF_MAX_LFN, "too long name");
 		if (di >= FF_MAX_LFN) return FR_INVALID_NAME;	/* Reject too long name */
-#if !FF_LFN_UNICODE		/* ANSI/OEM API */
+
 		w &= 0xFF;
 		if (dbc_1st((BYTE)w)) {			/* Check if it is a DBC 1st byte */
 			b = (BYTE)p[si++];			/* Get 2nd byte */
 			w = (w << 8) + b;			/* Create a DBC */
-			if (!dbc_2nd(b)) return FR_INVALID_NAME;	/* Reject invalid sequence */
+
+			int _res = dbc_2nd(b);
+			_assert(_res != 0, "bad dbc");
+			if (_res == 0) return FR_INVALID_NAME;	/* Reject invalid sequence */
 		}
 		w = ff_oem2uni(w, CODEPAGE);	/* Convert ANSI/OEM to Unicode */
-		if (!w) return FR_INVALID_NAME;	/* Reject invalid code */
-#endif
+		_assert(w != 0, "how is w not 0");
+		if (w == 0) return FR_INVALID_NAME;	/* Reject invalid code */
+
+		// _assert(w >= 0x80, "what is w");
+		// _assert(chk_chr("\"*:<>\?|\x7F", w) == 0, "chk_chr broke");
+		_assert(!(w < 0x80 && chk_chr("\"*:<>\?|\x7F", w)), "what is this cond");
 		if (w < 0x80 && chk_chr("\"*:<>\?|\x7F", w)) return FR_INVALID_NAME;	/* Reject illegal characters for LFN */
 		lfn[di++] = w;					/* Store the Unicode character */
 	}
 	*path = &p[si];						/* Return pointer to the next segment */
 	cf = (w < ' ') ? NS_LAST : 0;		/* Set last segment flag if end of the path */
 #if FF_FS_RPATH != 0
+	#error dont use relative path turn off FF_FS_RPATH
 	if ((di == 1 && lfn[di - 1] == '.') ||
 		(di == 2 && lfn[di - 1] == '.' && lfn[di - 2] == '.')) {	/* Is this segment a dot name? */
 		lfn[di] = 0;
@@ -2698,13 +2715,16 @@ FRESULT create_name (	/* FR_OK: successful, FR_INVALID_NAME: could not create */
 		return FR_OK;
 	}
 #endif
-	while (di) {						/* Snip off trailing spaces and dots if exist */
+	_assert(di != 0, "nothing to trim");
+
+	while (di != 0) {						/* Snip off trailing spaces and dots if exist */
 		w = lfn[di - 1];
 		if (w != ' ' && w != '.') break;
 		di--;
 	}
-	lfn[di] = 0;						/* LFN is created */
+	_assert(di != 0, "no dir index");
 	if (di == 0) return FR_INVALID_NAME;	/* Reject nul name */
+	lfn[di] = 0;						/* LFN is created */
 
 	/* Create SFN in directory form */
 	mem_set(dp->fn, ' ', 11);
@@ -2783,70 +2803,6 @@ FRESULT create_name (	/* FR_OK: successful, FR_INVALID_NAME: could not create */
 	dp->fn[NSFLAG] = cf;	/* SFN is created */
 
 	return FR_OK;
-
-
-#else	/* FF_USE_LFN : Non-LFN configuration */
-	BYTE c, d, *sfn;
-	UINT ni, si, i;
-	const char *p;
-
-	/* Create file name in directory form */
-	p = *path; sfn = dp->fn;
-	mem_set(sfn, ' ', 11);
-	si = i = 0; ni = 8;
-#if FF_FS_RPATH != 0
-	if (p[si] == '.') { /* Is this a dot entry? */
-		for (;;) {
-			c = (BYTE)p[si++];
-			if (c != '.' || si >= 3) break;
-			sfn[i++] = c;
-		}
-		if (c != '/' && c != '\\' && c > ' ') return FR_INVALID_NAME;
-		*path = p + si;								/* Return pointer to the next segment */
-		sfn[NSFLAG] = (c <= ' ') ? NS_LAST | NS_DOT : NS_DOT;	/* Set last segment flag if end of the path */
-		return FR_OK;
-	}
-#endif
-	for (;;) {
-		c = (BYTE)p[si++];
-		if (c <= ' ') break; 			/* Break if end of the path name */
-		if (c == '/' || c == '\\') {	/* Break if a separator is found */
-			while (p[si] == '/' || p[si] == '\\') si++;	/* Skip duplicated separator if exist */
-			break;
-		}
-		if (c == '.' || i >= ni) {		/* End of body or over size? */
-			if (ni == 11 || c != '.') return FR_INVALID_NAME;	/* Over size or invalid dot */
-			i = 8; ni = 11;				/* Goto extension */
-			continue;
-		}
-#if FF_CODE_PAGE == 0
-		if (ExCvt && c >= 0x80) {		/* Is SBC extended character? */
-			c = ExCvt[c - 0x80];		/* To upper SBC extended character */
-		}
-#elif FF_CODE_PAGE < 900
-		if (c >= 0x80) {				/* Is SBC extended character? */
-			c = ExCvt[c - 0x80];		/* To upper SBC extended character */
-		}
-#endif
-		if (dbc_1st(c)) {				/* Check if it is a DBC 1st byte */
-			d = (BYTE)p[si++];			/* Get 2nd byte */
-			if (!dbc_2nd(d) || i >= ni - 1) return FR_INVALID_NAME;	/* Reject invalid DBC */
-			sfn[i++] = c;
-			sfn[i++] = d;
-		} else {						/* SBC */
-			if (chk_chr("\"*+,:;<=>\?[]|\x7F", c)) return FR_INVALID_NAME;	/* Reject illegal chrs for SFN */
-			if (IsLower(c)) c -= 0x20;	/* To upper */
-			sfn[i++] = c;
-		}
-	}
-	*path = p + si;						/* Return pointer to the next segment */
-	if (i == 0) return FR_INVALID_NAME;	/* Reject nul string */
-
-	if (sfn[0] == DDEM) sfn[0] = RDDEM;	/* If the first character collides with DDEM, replace it with RDDEM */
-	sfn[NSFLAG] = (c <= ' ') ? NS_LAST : 0;		/* Set last segment flag if end of the path */
-
-	return FR_OK;
-#endif /* FF_USE_LFN */
 }
 
 
@@ -2885,7 +2841,7 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 		dp->obj.c_scl = fs->cdc_scl;
 		dp->obj.c_size = fs->cdc_size;
 		dp->obj.c_ofs = fs->cdc_ofs;
-		res = load_obj_xdir(&dj, &dp->obj);
+		ERRCK(load_obj_xdir(&dj, &dp->obj));
 		if (res != FR_OK) return res;
 		dp->obj.objsize = ld_dword(fs->dirbuf + XDIR_FileSize);
 		dp->obj.stat = fs->dirbuf[XDIR_GenFlags] & 2;
@@ -2895,13 +2851,18 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 
 	if ((UINT)*path < ' ') {				/* Null path name is the origin directory itself */
 		dp->fn[NSFLAG] = NS_NONAME;
-		res = dir_sdi(dp, 0);
+		ERRCK(dir_sdi(dp, 0));
 
 	} else {								/* Follow path */
 		for (;;) {
-			res = create_name(dp, &path);	/* Get a segment name of the path */
+			ERRCK(create_name(dp, &path));	/* Get a segment name of the path */
 			if (res != FR_OK) break;
 			res = dir_find(dp);				/* Find an object with the segment name */
+
+			// if (res != FR_OK) {
+				
+			// }
+
 			ns = dp->fn[NSFLAG];
 			if (res != FR_OK) {				/* Failed to find the object */
 				if (res == FR_NO_FILE) {	/* Object is not found */
@@ -3353,7 +3314,7 @@ FRESULT f_mount (
 /*-----------------------------------------------------------------------*/
 /* Open or Create a File                                                 */
 /*-----------------------------------------------------------------------*/
-
+#include "game/fs_api.h"
 FRESULT f_open (
 	FIL* fp,			/* Pointer to the blank file object */
 	const TCHAR* path,	/* Pointer to the file name */
@@ -3379,6 +3340,13 @@ FRESULT f_open (
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
 		res = follow_path(&dj, path);	/* Follow the file path */
+		// assert(res == FR_OK, "E %s", fresults[res]);
+		// if (res != FR_OK) {
+		// 	char buf[50];
+		// 	sprintf(buf, "e %s%s", cur_directory.dirname, path);
+		// 	_assert(0, buf);
+		// }
+
 #if !FF_FS_READONLY	/* Read/Write configuration */
 		if (res == FR_OK) {
 			if (dj.fn[NSFLAG] & NS_NONAME) {	/* Origin directory itself? */
@@ -4193,8 +4161,6 @@ FRESULT f_lseek (
 	LEAVE_FF(fs, res);
 }
 
-
-
 #if FF_FS_MINIMIZE <= 1
 /*-----------------------------------------------------------------------*/
 /* Create a Directory Object                                             */
@@ -4213,11 +4179,11 @@ FRESULT f_opendir (
 	if (!dp) return FR_INVALID_OBJECT;
 
 	/* Get logical drive */
-	res = find_volume(&path, &fs, 0);
+	ERRCK(find_volume(&path, &fs, 0));
 	if (res == FR_OK) {
 		dp->obj.fs = fs;
 		INIT_NAMBUF(fs);
-		res = follow_path(dp, path);			/* Follow the path to the directory */
+		ERRCK(follow_path(dp, path));			/* Follow the path to the directory */
 		if (res == FR_OK) {						/* Follow completed */
 			if (!(dp->fn[NSFLAG] & NS_NONAME)) {	/* It is not the origin directory itself */
 				if (dp->obj.attr & AM_DIR) {		/* This object is a sub-directory */
@@ -4240,7 +4206,7 @@ FRESULT f_opendir (
 			}
 			if (res == FR_OK) {
 				dp->obj.id = fs->id;
-				res = dir_sdi(dp, 0);			/* Rewind directory */
+				ERRCK(dir_sdi(dp, 0));			/* Rewind directory */
 #if FF_FS_LOCK != 0
 				if (res == FR_OK) {
 					if (dp->obj.sclust != 0) {
@@ -4298,6 +4264,7 @@ FRESULT f_closedir (
 /* Read Directory Entries in Sequence                                    */
 /*-----------------------------------------------------------------------*/
 
+
 FRESULT f_readdir (
 	DIR* dp,			/* Pointer to the open directory object */
 	FILINFO* fno		/* Pointer to file information to return */
@@ -4308,17 +4275,17 @@ FRESULT f_readdir (
 	DEF_NAMBUF
 
 
-	res = validate(&dp->obj, &fs);	/* Check validity of the directory object */
+	ERRCK(validate(&dp->obj, &fs));	/* Check validity of the directory object */
 	if (res == FR_OK) {
 		if (!fno) {
-			res = dir_sdi(dp, 0);			/* Rewind the directory object */
+			ERRCK(dir_sdi(dp, 0));			/* Rewind the directory object */
 		} else {
 			INIT_NAMBUF(fs);
 			res = dir_read(dp, 0);			/* Read an item */
 			if (res == FR_NO_FILE) res = FR_OK;	/* Ignore end of directory */
 			if (res == FR_OK) {				/* A valid entry is found */
 				get_fileinfo(dp, fno);		/* Get the object information */
-				res = dir_next(dp, 0);		/* Increment index for next */
+				dir_next(dp, 0);		/* Increment index for next */
 				if (res == FR_NO_FILE) res = FR_OK;	/* Ignore end of directory now */
 			}
 			FREE_NAMBUF();

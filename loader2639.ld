@@ -40,6 +40,9 @@ SECTIONS {
     BEGIN_SEG(code, 0x80000400) SUBALIGN(16) {
         BUILD_DIR/asm/entry.o(.text);
         BUILD_DIR/asm/tick.o(.text);
+        BUILD_DIR/asm/assert.o(.text);
+        BUILD_DIR/src/game/cic.o(.text);
+        BUILD_DIR/src/game/assert.o(.text);
 
         BUILD_DIR/src/main.o(.text*);
         BUILD_DIR/src/main.o(.data*);
@@ -64,6 +67,7 @@ SECTIONS {
         FILE(BUILD_DIR/src/game/fs_api.o)
         FILE(BUILD_DIR/src/lib/string.o)
 
+        BUILD_DIR/asm/assert.o(.data);
         BUILD_DIR/libs2d_engine.a:*.o(.text*);
         BUILD_DIR/libs2d_engine.a:*.o(.data*);
         BUILD_DIR/libs2d_engine.a:*.o(.rodata*);
@@ -115,15 +119,16 @@ SECTIONS {
     END_NOLOAD(code)
 
     _codeSegmentBssEnd = .;
-
+/*
     BEGIN_SEG(testrom, 0) {
         BUILD_DIR/cringe/rom.o(.text);
     }
-    END_SEG(testrom)
+    END_SEG(testrom)*/
 
-    BEGIN_SEG(reboot, 0x80100400) SUBALIGN(16) {
+    BEGIN_SEG(reboot, 0x80701000) SUBALIGN(16) {
         FILE(BUILD_DIR/src/game/reboot.o)
         BUILD_DIR/asm/reboot_asm.o(.text);
+        BUILD_DIR/asm/cache.o(.text);
     }
     END_SEG(reboot)
     BEGIN_NOLOAD(reboot) {

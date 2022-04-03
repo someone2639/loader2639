@@ -4,6 +4,7 @@
 #include "filesystem/ff.h"
 #include "s2d_engine/s2d_print.h"
 #include "fs_api.h"
+#include "debug.h"
 
 direntry_t fsFileList[MAX_FILES];
 hide_sysfolder = 1;
@@ -22,8 +23,11 @@ void print_dir(direntry_t *ls, int cur, int start, int len, int count) {
     if (start > count) return;
 
 
-    for (int i = start; i < start + count; i++) {
+    for (int i = cur; i < cur + count; i++) {
         // toPrint += sprintf(toPrint, "%c %s\n", cur == count ? '>' : ' ', ls[i].filename);
+        if (i > MAX_FILES) {
+            continue;
+        }
         toPrint += sprintf(toPrint, "%c %s\n", cur == i ? '>' : ' ', ls[i].filename);
         // toPrint += sprintf(toPrint, "test\n");
     }
@@ -42,6 +46,30 @@ void clear_filenames(void) {
     }
 }
 
+char *fresults[] = {
+    "FR_OK",                  /* (0) Succeeded */
+    "FR_DISK_ERR",            /* (1) A hard error occurred in the low level disk I/O layer */
+    "FR_INT_ERR",             /* (2) Assertion failed */
+    "FR_NOT_READY",           /* (3) The physical drive cannot work */
+    "FR_NO_FILE",             /* (4) Could not find the file */
+    "FR_NO_PATH",             /* (5) Could not find the path */
+    "FR_INVALID_NAME",        /* (6) The path name format is invalid */
+    "FR_DENIED",              /* (7) Access denied due to prohibited access or directory full */
+    "FR_EXIST",               /* (8) Access denied due to prohibited access */
+    "FR_INVALID_OBJECT",      /* (9) The file/directory object is invalid */
+    "FR_WRITE_PROTECTED",     /* (10) The physical drive is write protected */
+    "FR_INVALID_DRIVE",       /* (11) The logical drive number is invalid */
+    "FR_NOT_ENABLED",         /* (12) The volume has no work area */
+    "FR_NO_FILESYSTEM",       /* (13) There is no valid FAT volume */
+    "FR_MKFS_ABORTED",        /* (14) The f_mkfs() aborted due to any problem */
+    "FR_TIMEOUT",             /* (15) Could not get a grant to access the volume within defined period */
+    "FR_LOCKED",              /* (16) The operation is rejected according to the file sharing policy */
+    "FR_NOT_ENOUGH_CORE",     /* (17) LFN working buffer could not be allocated */
+    "FR_TOO_MANY_OPEN_FILES", /* (18) Number of open files > FF_FS_LOCK */
+    "FR_INVALID_PARAMETER"    /* (19) Given parameter is invalid */
+};
+
+
 void fs_ls(char *directory) {
     fsFileCount = 1;
     FRESULT res;
@@ -53,6 +81,7 @@ void fs_ls(char *directory) {
 
 
     res = f_opendir(&dir, directory);                       /* Open the directory */
+
     if (res == FR_OK) {
         for (;;) {
             res = f_readdir(&dir, &fno);                   /* Read a directory item */
@@ -71,22 +100,26 @@ void fs_ls(char *directory) {
         }
         f_closedir(&dir);
         fsFileCount--;
-    }
-    else
-    {
-        // failed, idk what to do here
-        // *(vs8*)0=0;
+    } else {
+        assert (0, "DIR ERROR %s", fresults[res]);
     }
 
     page = 0;
     cursor = 0;
 
-    // if (fsFileCount > 0)
+    // assert(fsFileCount > 0, "No Files here %s", directory);
     // {
     //     /* Should sort! */
     //     qsort(fsFileList, fsFileCount, sizeof(direntry_t), fs_filelist_compare);
     // }
     
+}
+
+void curdir_Slash(CurDir *c) {
+    c->dirname[c->slashLocations[c->slashIdx]] = '/';
+}
+void curdir_UnSlash(CurDir *c) {
+    c->dirname[c->slashLocations[c->slashIdx]] = ' ';
 }
 
 
@@ -96,7 +129,9 @@ void curdir_Change(CurDir *c, String s) {
     strcpy(&c->dirname[c->slashLocations[c->slashIdx] + 1], s);
     c->slashLocations[++c->slashIdx] = origlen + addlen;
     c->dirname[c->slashLocations[c->slashIdx]] = '/';
+    curdir_UnSlash(c);
 }
+
 
 static void strtrim(String dst, int x) {
     for (int i = x; i < FULLPATH_LEN; i++) {

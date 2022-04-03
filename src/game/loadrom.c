@@ -96,8 +96,24 @@ void *memset(void *b, int c, int len)
   return(b);
 }
 
-extern FATFS loader_fs;
+#define WAIT_ON_IOBUSY(stat)                                \
+    stat = IO_READ(PI_STATUS_REG);                          \
+    while (stat & (PI_STATUS_IO_BUSY | PI_STATUS_DMA_BUSY)) \
+        stat = IO_READ(PI_STATUS_REG);
 
+
+static __inline__ s32 rawdma(u32 devAddr, void *dramAddr, u32 size)
+{
+    register u32 stat;
+    WAIT_ON_IOBUSY(stat);
+    IO_WRITE(PI_DRAM_ADDR_REG, K0_TO_PHYS(dramAddr));
+    IO_WRITE(PI_CART_ADDR_REG, K1_TO_PHYS((u32)osRomBase | devAddr));
+    IO_WRITE(PI_WR_LEN_REG, size - 1);
+    return 0;
+}
+
+extern FATFS loader_fs;
+extern u8 _rebootSegmentStart[], _rebootSegmentRomStart[], _rebootSegmentRomEnd[];
 void bootRom(void) {
     reboot_disable_interrupts();
     evd_setSaveType(SAVE_TYPE_EEP4k);
@@ -105,7 +121,7 @@ void bootRom(void) {
     sleep(10);
     f_mount(0, "", 0);
     sleep(10);
-    reboot_game((volatile)0x00000000);
+    reboot_game(0);
 }
 
 // load a z64/v64/n64 rom to the sdram
@@ -171,6 +187,15 @@ void loadrom(u8 *buff) {
                 );
             }
         }
+
+        // if (*(vu32*)0xB0000000 == 0x37804012) {
+        //     vu32 *romarray = (vu32*) 0xB0000000;
+        //     for (int i = 0; i < bytesread / 4; i++) {
+        //         vu32 x = romarray[i];
+        //         romarray[i] = ((x << 8) & 0xFF00FF00)
+        //                     | ((x >> 8) & 0x00FF00FF);
+        //     }
+        // }
 
         // if (result == FR_OK) {
         //     bootRom(1);

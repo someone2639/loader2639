@@ -7,6 +7,7 @@
 #include "game/fs_api.h"
 #include "everdrive/everdrive.h"
 #include "s2d_engine/s2d_print.h"
+#include "debug.h"
 
 extern OSMesgQueue piMessageQ;
 extern OSMesgQueue siMessageQ;
@@ -160,6 +161,8 @@ OSContPad conts[MAXCONTROLLERS];
 struct Controller {
     u16 button;
     u16 buttonHeld;
+    s8 stickX;
+    s8 stickY;
 };
 struct Controller controllers[MAXCONTROLLERS];
 
@@ -169,7 +172,10 @@ void update_controllers(void) {
 
     osContGetReadData(conts);
     for (int i = 0; i < MAXCONTROLLERS; i++) {
-        controllers[i].button = conts[i].button;
+        controllers[i].button = (conts[i].button ^ controllers[i].buttonHeld) & conts[i].button;
+        controllers[i].buttonHeld = conts[i].button;
+        controllers[i].stickX = conts[i].stick_x;
+        controllers[i].stickY = conts[i].stick_y;
         // if (conts[i].button == controllers[i].buttonHeld) {
         //     controllers[i].button = 0;
         // } else {
@@ -198,6 +204,8 @@ int fs_loaded_latch = 0;
 int romLoaded = 0;
 int romDMALatch = 0;
 
+int num_ls = 0;
+
 void main2(void *arg) {
     u8 draw_frame = 0;
 
@@ -222,11 +230,12 @@ void main2(void *arg) {
                 fs_ls(cur_directory.dirname);
                 if (fsFileList[0].filename[0] != '\0') {
                     fs_loaded_latch = 1;
+            //         num_ls += 1;
                 }
             }
 
             static char mydir[257];
-            sprintf(mydir, SCALE "25" "%s", cur_directory.dirname);
+            sprintf(mydir, SCALE "25" SEPARATOR "%d %s", num_ls, cur_directory.dirname);
             s2d_print_alloc(40 + 5 * sinf(gTimer / 10.0f), 10, ALIGN_LEFT, mydir);
             print_dir(fsFileList, cursor, 0, 0, 10);
 
@@ -240,16 +249,28 @@ void main2(void *arg) {
             if (controllers[0].button & A_BUTTON) {
                 if (fsFileList[cursor].type == DT_DIR){
                     curdir_Change(&cur_directory, fsFileList[cursor].filename);
-                    fs_loaded_latch = 0;
+                    // fs_loaded_latch = 0;
+                    fs_ls(cur_directory.dirname);
+                    num_ls += 1;
                 } else if (fsFileList[cursor].type == DT_REG) {
-                    loadrom(fsFileList[cursor].filename);
+                    curdir_Slash(&cur_directory);
+
+                    char fullpath[FULLPATH_LEN];
+                    sprintf(fullpath, "%s%s", cur_directory.dirname, fsFileList[cursor].filename);
+
+                    loadrom(fullpath);
+                    curdir_UnSlash(&cur_directory);
                 }
             }
 
             if (controllers[0].button & B_BUTTON) {
                 curdir_Unchange(&cur_directory);
+                fs_ls(cur_directory.dirname);
             }
 
+            if (controllers[0].button & L_TRIG) {
+                assert(0, "test %d", num_ls);
+            }
 
             if (controllers[0].button & U_CBUTTONS) {
                 cursor--;
@@ -257,7 +278,7 @@ void main2(void *arg) {
             }
             if (controllers[0].button & D_CBUTTONS) {
                 cursor++;
-                if (cursor > 10) cursor = 10;
+                if (cursor > MAX_FILES) cursor = MAX_FILES;
             }
             if (controllers[0].button & R_CBUTTONS) {
                 page++;

@@ -15,6 +15,7 @@ extern OSThread *__osActiveQueue;
 
 #define static
 #define __inline__
+#define ASM_STATE_SETTER
 
 u8 rebootStack[256];
 void *keepTheGameFromCrashing = &__osPiRawReadIo; // Why???
@@ -95,8 +96,11 @@ void reboot_game_internal(u32 devAddr)
         }
         curThread = next;
     }
+
     // Get the entry point of the pointed to rom header
     reboot_read_word(devAddr + 8, &entryPoint);
+
+    // cic_chip = get_cic(ROM);
 
     if (cic_chip == CIC_6105) {
         entryPoint -= 0x10000;
@@ -117,16 +121,15 @@ void reboot_game_internal(u32 devAddr)
 
     // Imitate initial startup DMA
     reboot_dma_read(devAddr + 0x1000, (void*)entryPoint, 0x100000);
+#ifdef DEBUG
 
-    // if (emulator) {
-    //     extern u8 _testromSegmentRomStart[];
-    //     reboot_read_word(((u32)_testromSegmentRomStart) + 8, &entryPoint);
-    //     reboot_dma_read((u32)_testromSegmentRomStart + 0x1000, (void*)entryPoint, 0x100000);
-    // }
+    if ()
 
+#endif
     // Wait for DMA to finish
     while (reboot_get_pi_status() & (PI_STATUS_DMA_BUSY | PI_STATUS_ERROR));
 
+#ifdef ASM_STATE_SETTER
     asm __volatile__ (
         ".set noreorder;"
 
@@ -242,18 +245,24 @@ void reboot_game_internal(u32 devAddr)
           "$11", "$19", "$20", "$21",
           "$22", "$23", "memory"
     );
-    // Jump to the game's entry point
-    // reboot_enable_interrupts();
+#endif
 
     extern u8 _ram_kernelSegmentRomStart[];
     extern int ramkernel_size;
-    reboot_dma_read(_ram_kernelSegmentRomStart, 0x80000000, &ramkernel_size);
-
-    while (reboot_get_pi_status() & (PI_STATUS_DMA_BUSY | PI_STATUS_ERROR));
 
 
+    // if (mode == 0) {
+        inval_icache(0x80000000, 0x00800000);
+        inval_dcache(0x80000000, 0x00800000);
+        __asm__ __volatile__("jr %0" : : "r" (entryPoint));
+    // } else {
+        // simulate_boot(cic_chip, cic_chip);
+        // __asm__ __volatile__("j 0xA4000040");
+    // }
+    // Jump to the game's entry point
+    // reboot_enable_interrupts();
+    // reboot_dma_read(_ram_kernelSegmentRomStart, 0x80000000, &ramkernel_size);
+
+    // while (reboot_get_pi_status() & (PI_STATUS_DMA_BUSY | PI_STATUS_ERROR));
     // clear_ram_and_boot(entryPoint);
-    __asm__ __volatile__("jr %0" : : "r" (entryPoint));
-    // simulate_boot(CIC_6102, CIC_6102);
-    // __asm__ __volatile__("j 0xA4000040");
 }
